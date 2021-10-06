@@ -22,33 +22,33 @@ contract multiSigWallet {
         require(isOwner[msg.sender], "Not authorized owner");
         _;
     }
-    modifier txExists(uint256 _tx) {
-        require(_tx < transactions.length, "Transaction does not exist.");
+    modifier txnExists(uint256 _txn) {
+        require(_txn < transactions.length, "Transaction does not exist.");
         _;
     }
-    modifier txNConfirmed(uint256 _tx) {
+    modifier txnNConfirmed(uint256 _txn) {
         require(
-            confirms[_tx][msg.sender] = false,
+            confirms[_txn][msg.sender] = false,
             "Transaction already confirmed."
         );
         _;
     }
-    modifier txNExecuted(uint256 _tx) {
-        require(!transactions[_tx].executed, "Transaction already executed.");
+    modifier txnNExecuted(uint256 _txn) {
+        require(!transactions[_txn].executed, "Transaction already executed.");
         _;
     }
 
     //Events
     event submitTransaction(
         address indexed owner,
-        uint256 indexed txIndex,
+        uint256 indexed txnIndex,
         address indexed to,
         uint256 amount,
         bytes data
     );
-    event confirmTransaction(address indexed owner, uint256 indexed txIndex);
-    event revokeTransaction(address indexed owner, uint256 indexed txIndex);
-    event executeTransaction(address indexed owner, uint256 indexed txIndex);
+    event confirmTransaction(address indexed owner, uint256 indexed txnIndex);
+    event revokeTransaction(address indexed owner, uint256 indexed txnIndex);
+    event executeTransaction(address indexed owner, uint256 indexed txnIndex);
     event Deposit(address indexed sender, uint256 amount, uint256 balance);
 
     // Constructor
@@ -77,7 +77,7 @@ contract multiSigWallet {
         uint256 _amount,
         bytes memory _data
     ) public Owner {
-        uint256 tx = transactions.length;
+        uint256 txn = transactions.length;
         transactions.push(
             Transaction({
                 requester: msg.sender,
@@ -88,36 +88,41 @@ contract multiSigWallet {
                 executed: false
             })
         );
-        confirms[tx][msg.sender] = true;
-        emit submitTransaction(msg.sender, tx, _receiver, _amount, _data);
+        confirms[txn][msg.sender] = true;
+        emit submitTransaction(msg.sender, txn, _receiver, _amount, _data);
     }
 
-    function confirm(uint256 _tx)
+    function confirm(uint256 _txn)
         public
         Owner
-        txExists(_tx)
-        txNConfirmed(_tx)
-        txNExecuted(_tx)
+        txnExists(_txn)
+        txnNConfirmed(_txn)
+        txnNExecuted(_txn)
     {
-        Transaction storage transaction = transactions[_tx];
+        Transaction storage transaction = transactions[_txn];
         transaction.signatureCount += 1;
-        confirms[_tx][msg.sender] = true;
-        emit confirmTransaction(msg.sender, _tx);
+        confirms[_txn][msg.sender] = true;
+        emit confirmTransaction(msg.sender, _txn);
     }
 
-    function revoke(uint256 _tx) public Owner txExists(_tx) {
-        Transaction storage transaction = transactions[_tx];
+    function revoke(uint256 _txn) public Owner txnExists(_txn) {
+        Transaction storage transaction = transactions[_txn];
         require(
-            confirms[_tx][msg.sender] = true,
+            confirms[_txn][msg.sender] = true,
             "Transaction not previously confirmed."
         );
         transaction.signatureCount -= 1;
-        confirms[_tx][msg.sender] = false;
-        emit revokeTransaction(msg.sender, _tx);
+        confirms[_txn][msg.sender] = false;
+        emit revokeTransaction(msg.sender, _txn);
     }
 
-    function execute(uint256 _tx) public Owner txExists(_tx) txNExecuted(_tx) {
-        Transaction storage transaction = transactions[_tx];
+    function execute(uint256 _txn)
+        public
+        Owner
+        txnExists(_txn)
+        txnNExecuted(_txn)
+    {
+        Transaction storage transaction = transactions[_txn];
         require(
             transaction.signatureCount >= confirmationsReq,
             "Minimum consensus not yet reached to execute."
@@ -127,10 +132,10 @@ contract multiSigWallet {
         );
         require(success, "Transaction did not execute.");
         transaction.executed = true;
-        emit executeTransaction(msg.sender, _tx);
+        emit executeTransaction(msg.sender, _txn);
     }
 
-    function getTransaction(uint256 _tx)
+    function getTransaction(uint256 _txn)
         public
         view
         returns (
@@ -142,7 +147,7 @@ contract multiSigWallet {
             bool executed
         )
     {
-        Transaction storage transaction = transactions[_tx];
+        Transaction storage transaction = transactions[_txn];
         return (
             transaction.requester,
             transaction.to,
@@ -153,7 +158,7 @@ contract multiSigWallet {
         );
     }
 
-    function getTransactionCount(uint256 _tx) public view returns (int256) {
+    function getTransactionCount() public view returns (uint256) {
         return transactions.length;
     }
 }
